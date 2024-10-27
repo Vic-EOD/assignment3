@@ -1,0 +1,107 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+1. Load adult.data into a dataframe in R. Note that adult.data does not have column names in
+the first line so you need to set header=FALSE when you read the data then manually set the column
+names. Inspect the dataset using “str” and “summary” functions. What is the type of each variable in
+the dataset numeric/continuous or categorical/discrete? For each categorical variable explain whether
+it is nominal or ordinal.
+
+```{R}
+  adult_data <- read.csv("adult.data", header = FALSE, na.strings = " ?")
+  colnames(adult_data) <- c("age", "workclass", "fnlwgt", "education", "education-num", "marital-status", "occupation", "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week", "native-country", "target")
+  str(adult_data)
+  summary(adult_data)
+  # I had to do this for handling sparse data in native-country
+  library(stringr)
+  adult_data$`native-country` <- as.character(adult_data$`native-country`)
+  adult_data$`native-country` <- str_trim(adult_data$`native-country`)
+  adult_data$`native-country` <- as.factor(adult_data$`native-country`)
+  adult_data <- adult_data |>
+    mutate(`native-country` = fct_na_value_to_level(`native-country`, level = "United-States")) |>
+    mutate(`native-country` = fct_collapse(`native-country`,
+      North_America = c("United-States", "Mexico", "Canada", "Cuba", "Puerto-Rico", "Trinadad&Tobago", "Honduras", "Guatemala", "El-Salvador", "Haiti", "Jamaica", "Dominican-Republic", "Nicaragua"),
+      South_America = c("Columbia", "Ecuador", "Peru"),
+      Europe = c("England", "France", "Germany", "Greece", "Holand-Netherlands", "Hungary", "Ireland", "Italy", "Poland", "Portugal", "Scotland", "Yugoslavia"),
+      Asia = c("Cambodia", "China", "Hong", "India", "Iran", "Japan", "Laos", "Outlying-US(Guam-USVI-etc)", "Philippines", "Taiwan", "Thailand", "Vietnam"),
+      Other = "South"
+    ))
+```
+
+The type of each variable is as follows:
+
+- age: continuous
+- workclass: categorical/nominal
+- fnlwgt: continuous
+- education: categorical/ordinal
+- education-num: continuous
+- marital-status: categorical/nominal
+- occupation: categorical/nominal
+- relationship: categorical/nominal
+- race: categorical/nominal
+- sex: categorical/nominal
+- capital-gain: continuous
+- capital-loss: continuous
+- hours-per-week: continuous
+- native-country: categorical/nominal
+
+2. There are some missing values in this dataset represented as “ ?” (Note: there is a space before
+?) . Make sure that all “ ?” are converted to NAs. You can do so by setting “na.strings” parameters in
+“read.csv” to “ ?”
+
+- Done in the code block for question 1 above.
+
+3. Set the random seed, and split the data to train/test. Use 80% of samples for training and the
+remaining 20% for testing. You can use “sample” (similar to what we did in slide 37 of week 6 lecture
+but you need to adjust1000 and 900 to the number of observations in your dataset and the size of the
+sample) or alternatively, you can use “createDataPartition” method from caret package.
+
+```{R}
+  # install.packages("caret")
+  # library(caret)
+  set.seed(1234)
+  train_index <- createDataPartition(adult_data$target, p = .8, list = FALSE, times = 1)
+  adult_train <- adult_data[train_index,]
+  adult_test <- adult_data[-train_index,]
+```
+
+4. Read the section on “Handling Missing Data” in chapter 13 of the textbook Machine
+Learning with R. Find which columns/variables in the train and test set have missing values. Then
+decide about how you want to impute the missing values in these columns. Explain why you chose
+this imputation approach.
+```{R}
+  colSums(is.na(adult_data))
+```
+
+- There are three variables that have missing values, occupation and native-country. 
+- After analyzing the variables I believe that imputing the native-country variable with just 'United-States' is the best thing to do here. I did this because of two main reasons, I don't think that the data is not missing at random(NMAR) and after analyzing the dataset the 'United-States' category makes up almost 90% of the choices for the entire data set while the native-country variable also has a relatively low amount of missing values. This means that if I set missing values to 'United-States' I am less likely to introduce bias.
+- For the occupation variable this was harder. This one has a lot more missing values and I think that the missing values are not missing at random because I think people are less likely to report occupation if they are unemployed or have a low paying occupation.For this reason I chose to impute this data simply with the value 'Missing'.
+- For workclass the situation is very similar to the occupation variable and for that reason I decided to take the same approach and set all of the NA/missing variables to 'Unknown'.
+
+```{R}
+  adult_train <- adult_train |>
+    mutate(
+      `native-country_mvi` = if_else(is.na(`native-country`), 1, 0),
+      `native-country` = if_else(is.na(`native-country`), 'United-States', `native-country`),
+      occupation_mvi = if_else(is.na(occupation), 1, 0),
+      occupation = if_else(is.na(occupation), 'Unknown', occupation),
+      workclass_mvi = if_else(is.na(workclass), 1, 0),
+      workclass = if_else(is.na(workclass), 'Unknown', workclass)
+    )
+
+  adult_test <- adult_test |>
+    mutate(
+      `native-country_mvi` = if_else(is.na(`native-country`), 1, 0),
+      `native-country` = if_else(is.na(`native-country`), 'United-States', `native-country`),
+      occupation_mvi = if_else(is.na(occupation), 1, 0),
+      occupation = if_else(is.na(occupation), 'Unknown', occupation),
+      workclass_mvi = if_else(is.na(workclass), 1, 0),
+      workclass = if_else(is.na(workclass), 'Unknown', workclass)
+    )
+```
+
+5. Dealing with sparse data.I have decided to combine all values that are not 'United-States' into their respective continents, including the 'United-States' values. I will include Central American and Caribbean countries in North America. I have added this to the first code block. I did run into issues with untrimmed strings here in the data so I had to do trim strings for everything in native-country first for it to finally work. 
+
+6. Use appropriate plots and statistic tests to find which variables in the dataset are associated with
+“income”. Remove the variable(s) that are not associated with income.
