@@ -107,7 +107,8 @@ this imputation approach.
 
 6. Use appropriate plots and statistic tests to find which variables in the dataset are associated with
 “income”. Remove the variable(s) that are not associated with income.
-- age: side by side boxplot and t-test
+
+- age: side by side boxplot and t-test - is associated
   - the side by side boxplot has some overlap but I think there is enough of a difference to believe that there is an association between age and target(>50k)
   - running the t-test produces a p-value of < .05 so we can reject the null hypothesis
 ```{R}
@@ -115,7 +116,7 @@ this imputation approach.
   t.test(adult_data$age~adult_data$target)
 ```
 
-- workclass: mosaic plot and chi-square test
+- workclass: mosaic plot and chi-square test - is associated
   - the mosaic plot shows that there are 4 values that were more likely to have > 50k income; federal, local-gov, self-employed-inc, and self-employed-no-inc. There was also one, private, that was less likely to have income > 50k. It also showed that Private had the most observations.
   - the chisq test showed that the p-value was < 2.2e-16 but gave a warning that the approximation may be incorrect so I also ran it with simulate.p.value = TRUE and the p-value was still 0.0004998 which is lower than 0.05 so we can reject the null hypothesis. This supports the mosaic plot and the variables are associated.
 ```{R}
@@ -125,7 +126,7 @@ this imputation approach.
   chisq.test(workclass_target_table, simulate.p.value = TRUE)
 ```
 
-- fnlwgt: side by side box plots and t-test
+- fnlwgt: side by side box plots and t-test - not associated
   - the side by side box plots showed almost the exact same distributions which shows no association likely.
   - the t-test confirms this and returns a value of .08 which is > .05 so we should not reject the null hypothesis.
 ```{R}
@@ -133,11 +134,105 @@ this imputation approach.
   t.test(adult_data$fnlwgt~adult_data$target)
 ```
 
-- education: mosaic plot and chisq test
+- education: mosaic plot and chisq test - is associated
+  - the mosaic plot shows that there are a lot of values that were less likely to make over 50K. There are also 4 values (Bachelors, Doctorate, Masters, and Prof-School) that are more likely to make over 50K
+  - the chisq test evaluated a p-value that was smaller than 2.2e-16 without a warning so we can reject the null hypothesis
 ```{R}
   education_target_table <- table(adult_data$education, adult_data$target)
   mosaicplot(education_target_table, shade = TRUE)
   chisq.test(education_target_table)
-  chisq.test(education_target_table, simulate.p.value = TRUE)
-  plot()
+```
+
+- education-num: side by side box plots and t-test - associated
+  - the side by side box plots shows little overlap and so the variables are likely associated
+  - the t-test confirms this and returns a value < 2.2e-16 so we can reject the null hypothesis
+```{R}
+  plot(adult_data$`education-num`~as.factor(adult_data$target))
+  t.test(adult_data$`education-num`~adult_data$target)
+```
+
+- marital-status: mosaic plot and chisq test - is associated
+  - the mosaic plot shows that every value but Married-civ-spouse and Married-AF-spouse is more likely to earn less than 50K. Married-AF-spouse shows not much difference and Married-civ-spouse is more likely to make more than 50K. Variable is more than likely associated
+  - the chisq test confirms this with a p-value less than 2.2e-16 so null hypothesis can be rejected
+```{R}
+  marital_status_target_table <- table(adult_data$`marital-status`, adult_data$target)
+  mosaicplot(marital_status_target_table, shade = TRUE)
+  chisq.test(marital_status_target_table)
+```
+
+- occupation: mosaic plot and chisq test - is associated
+  - the mosaic plot shows a lot of blue and red which means that there are a lot of variables that show more or less frequent than the expected cell frequency which eludes to the variable being associated
+  - the chisq test shows that the p-value is less than 2.2e-16 although there is a warning. Setting simulate.p.value to true still produces a p-value less than .05 so we can reject the null hypothesis
+```{R}
+  occupation_target_table <- table(adult_data$occupation, adult_data$target)
+  mosaicplot(occupation_target_table, shade = TRUE)
+  chisq.test(occupation_target_table)
+  chisq.test(occupation_target_table, simulate.p.value = TRUE)
+```
+
+- relationship: mosaic plot and chisq test - is associated
+  - the mosaic plot shows a strong likelihood that husbands and wives are more likely to make more than 50K while all other values are less likely to make more than 50K and more likely to make less than 50K. Variables is most likely associated.
+  - the chisq test confirms this and produces a p-value less than 2.2e-16 which means we can reject the null hypothesis
+```{R}
+  relationship_target_table <- table(adult_data$relationship, adult_data$target)
+  mosaicplot(relationship_target_table, shade = TRUE)
+  chisq.test(relationship_target_table)
+```
+
+- race: mosaic plot and chisq test - is associated
+  - the mosaic plot shows a strong association between this and the target variable. If race value is White then those people are more likely to make over 50K and less likely to make less than 50K. At the same time all other values besides Asian-PAC-Islander are less likely to make over 50K and more likely to make less than 50K.Variables are more than likely associated.
+  - the chisq test produces a p-value that is less than 2.2e-16 so we can reject the null hypothesis
+```{R}
+  race_target_table <- table(adult_data$race, adult_data$target)
+  mosaicplot(race_target_table, shade = TRUE)
+  chisq.test(race_target_table)
+```
+
+- sex: mosaic plot and chisq test - is associated
+  - the mosaic plot shows very strong likelihood that the variables are associated as males are more likely to make more than 50K and less likely to make less than 50K while females are more likely to make less than 50K and less likely to make more than 50K.
+  - the chisq test confirms this and produces a p-value that is less than .05 so the null hypothesis can be rejected
+```{R}
+  sex_target_table <- table(adult_data$sex, adult_data$target)
+  mosaicplot(sex_target_table, shade = TRUE)
+  chisq.test(sex_target_table)
+```
+
+- capital-gain: side by side box plots and t-test - is associated
+  - the side by side box plots is difficult to decipher
+  - the t-test produces a p-value of less than .05 so we can reject the null hypothesis
+```{R}
+  plot(adult_data$`capital-gain`~as.factor(adult_data$target))
+  t.test(adult_data$`capital-gain`~adult_data$target)
+```
+
+- capital-loss: side by side box plots and t-test - is associated
+  - the side by side box plots is also difficult to decipher
+  - the t-test produces a p-value of less than .05 so we can reject the null hypothesis
+```{R}
+  plot(adult_data$`capital-loss`~as.factor(adult_data$target))
+  t.test(adult_data$`capital-loss`~adult_data$target)
+```
+
+- hours-per-week: side by side box plots and t-test - is associated
+  - the side by side box plots show little overlap and so it is likely that the variables are associated
+  - the t-test confirms this and produces a p-value of less than .05 so the null hypothesis can be rejected
+```{R}
+  plot(adult_data$`hours-per-week`~as.factor(adult_data$target))
+  t.test(adult_data$`hours-per-week`~adult_data$target)
+```
+
+- native-country: mosaic plot and chisq test - is associated
+  - the mosaic plot shows that there are a lot more observations of North_America(after combining values for data sparsity) than any other value. There are also two values (Europe and Asia) that are more likely to make more than 50K and one value (South_America) that is more likely to make less than 50K and less likely to make more than 50K
+  - the chisq test produces a p-value that is less than .05 and so the null hypothesis can be rejected
+```{R}
+  native_country_target_table <- table(adult_data$`native-country`, adult_data$target)
+  mosaicplot(native_country_target_table, shade = TRUE)
+  chisq.test(native_country_target_table)
+```
+
+Summary: most variables are associated which makes me a little nervous but most of them were pretty conclusive. The following variables are the ones that are not associated and will be removed from testing and train data: fnlwgt
+
+```{R}
+  adult_train <- subset(adult_train, select = -c(fnlwgt)) 
+  adult_test <- subset(adult_test, select = -c(fnlwgt)) 
 ```
