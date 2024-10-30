@@ -9,12 +9,14 @@ the dataset numeric/continuous or categorical/discrete? For each categorical var
 it is nominal or ordinal.
 
 ```{R}
+  install.packages("stringr", "tidyverse")
+  library(stringr)
+  library(tidyverse)
   adult_data <- read.csv("adult.data", header = FALSE, na.strings = " ?")
   colnames(adult_data) <- c("age", "workclass", "fnlwgt", "education", "education-num", "marital-status", "occupation", "relationship", "race", "sex", "capital-gain", "capital-loss", "hours-per-week", "native-country", "target")
   str(adult_data)
   summary(adult_data)
   # I had to do this for handling sparse data in native-country
-  library(stringr)
   adult_data$`native-country` <- as.character(adult_data$`native-country`)
   adult_data$`native-country` <- str_trim(adult_data$`native-country`)
   adult_data$`native-country` <- as.factor(adult_data$`native-country`)
@@ -58,8 +60,8 @@ but you need to adjust1000 and 900 to the number of observations in your dataset
 sample) or alternatively, you can use “createDataPartition” method from caret package.
 
 ```{R}
-  # install.packages("caret")
-  # library(caret)
+  install.packages("caret")
+  library(caret)
   set.seed(1234)
   train_index <- createDataPartition(adult_data$target, p = .8, list = FALSE, times = 1)
   adult_train <- adult_data[train_index,]
@@ -105,3 +107,37 @@ this imputation approach.
 
 6. Use appropriate plots and statistic tests to find which variables in the dataset are associated with
 “income”. Remove the variable(s) that are not associated with income.
+- age: side by side boxplot and t-test
+  - the side by side boxplot has some overlap but I think there is enough of a difference to believe that there is an association between age and target(>50k)
+  - running the t-test produces a p-value of < .05 so we can reject the null hypothesis
+```{R}
+  plot(adult_data$age~as.factor(adult_data$target))
+  t.test(adult_data$age~adult_data$target)
+```
+
+- workclass: mosaic plot and chi-square test
+  - the mosaic plot shows that there are 4 values that were more likely to have > 50k income; federal, local-gov, self-employed-inc, and self-employed-no-inc. There was also one, private, that was less likely to have income > 50k. It also showed that Private had the most observations.
+  - the chisq test showed that the p-value was < 2.2e-16 but gave a warning that the approximation may be incorrect so I also ran it with simulate.p.value = TRUE and the p-value was still 0.0004998 which is lower than 0.05 so we can reject the null hypothesis. This supports the mosaic plot and the variables are associated.
+```{R}
+  workclass_target_table <- table(adult_data$workclass, adult_data$target)
+  mosaicplot(workclass_target_table, shade = TRUE)
+  chisq.test(workclass_target_table)
+  chisq.test(workclass_target_table, simulate.p.value = TRUE)
+```
+
+- fnlwgt: side by side box plots and t-test
+  - the side by side box plots showed almost the exact same distributions which shows no association likely.
+  - the t-test confirms this and returns a value of .08 which is > .05 so we should not reject the null hypothesis.
+```{R}
+  plot(adult_data$fnlwgt~as.factor(adult_data$target))
+  t.test(adult_data$fnlwgt~adult_data$target)
+```
+
+- education: mosaic plot and chisq test
+```{R}
+  education_target_table <- table(adult_data$education, adult_data$target)
+  mosaicplot(education_target_table, shade = TRUE)
+  chisq.test(education_target_table)
+  chisq.test(education_target_table, simulate.p.value = TRUE)
+  plot()
+```
