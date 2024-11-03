@@ -9,7 +9,7 @@ the dataset numeric/continuous or categorical/discrete? For each categorical var
 it is nominal or ordinal.
 
 ```{R}
-  install.packages("stringr", "tidyverse")
+  install.packages("stringr", "tidyverse", "dyplr")
   library(stringr)
   library(tidyverse)
   adult_data <- read.csv("adult.data", header = FALSE, na.strings = " ?")
@@ -17,12 +17,13 @@ it is nominal or ordinal.
   str(adult_data)
   summary(adult_data)
   # I had to do this for handling sparse data in native-country
-  adult_data$`native-country` <- as.character(adult_data$`native-country`)
-  adult_data$`native-country` <- str_trim(adult_data$`native-country`)
-  adult_data$`native-country` <- as.factor(adult_data$`native-country`)
-  adult_data$target <- as.character(adult_data$target)
-  adult_data$target <- str_trim(adult_data$target)
-  adult_data$target <- as.factor(adult_data$target)
+  # adult_data$`native-country` <- as.character(adult_data$`native-country`)
+  # adult_data$`native-country` <- str_trim(adult_data$`native-country`)
+  # adult_data$`native-country` <- as.factor(adult_data$`native-country`)
+  # adult_data$target <- as.character(adult_data$target)
+  # adult_data$target <- str_trim(adult_data$target)
+  # adult_data$target <- as.factor(adult_data$target)
+  
   adult_data <- adult_data |>
     mutate(`native-country` = fct_na_value_to_level(`native-country`, level = "United-States")) |>
     mutate(`native-country` = fct_collapse(`native-country`,
@@ -319,4 +320,15 @@ total error as well as the precision and recall for both income<=50K and income>
   c5_error
   c5_precision
   c5_recall
+  
+  income_c5_ds <- C5.0(adult_downsampled[-14], as.factor(adult_downsampled$target), trials = 30)
+  income_pred_ds <- predict(income_c5_ds, adult_test)
+  income_confusion_ds <- CrossTable(adult_test$target, income_pred_ds, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual income', 'predicted income'))
+  c5_tds <- income_confusion_ds$t
+  c5_error_ds <- (c5_tds[1,2] + c5_tds[2,1]) / sum(c5_tds)
+  c5_precision_ds <- c5_tds[2,2] / (c5_tds[2,2] + c5_tds[1,2])
+  c5_recall_ds <- c5_tds[2,2] / (c5_tds[2,2] + c5_tds[2,1])
+  c5_error_ds
+  c5_precision_ds
+  c5_recall_ds
 ```
