@@ -20,6 +20,9 @@ it is nominal or ordinal.
   adult_data$`native-country` <- as.character(adult_data$`native-country`)
   adult_data$`native-country` <- str_trim(adult_data$`native-country`)
   adult_data$`native-country` <- as.factor(adult_data$`native-country`)
+  adult_data$target <- as.character(adult_data$target)
+  adult_data$target <- str_trim(adult_data$target)
+  adult_data$target <- as.factor(adult_data$target)
   adult_data <- adult_data |>
     mutate(`native-country` = fct_na_value_to_level(`native-country`, level = "United-States")) |>
     mutate(`native-country` = fct_collapse(`native-country`,
@@ -235,4 +238,85 @@ Summary: most variables are associated which makes me a little nervous but most 
 ```{R}
   adult_train <- subset(adult_train, select = -c(fnlwgt)) 
   adult_test <- subset(adult_test, select = -c(fnlwgt)) 
+```
+
+7. Train a logistic regression model on the train data (preprocessed and transformed using above
+steps) using the glm package and use it to predict “income” for the test data
+
+```{R}
+  logistic_model <- glm(as.factor(target)~age+workclass+education+`marital-status`+occupation+relationship+race+sex+`capital-gain`+`capital-loss`+`hours-per-week`+`native-country`, family = "binomial", data = adult_train)
+  predictions <- predict(logistic_model, adult_test, type = "response")
+  predicted.label <- factor(ifelse(predictions > 0.5, ">50K", "<=50K"))
+  actual.label = adult_test$target
+  t <- table(predicted.label, actual.label)
+  t
+  error <- (t[1,2]+t[2,1]) / sum(t)
+  error
+```
+
+8. Get the cross table between the predicted labels and true labels in the test data and compute the
+total error as well as the precision and recall for both income<=50K and income>50K classes.
+
+```{R}
+  t <- table(predicted.label, actual.label)
+  t
+  error <- (t[1,2]+t[2,1]) / sum(t)
+  error
+  # precision: true positives(>50K) divided by all predicted positives
+  precision <- t[2,2] / (t[2,2] + t[1,2])
+  precision
+  # recall: true positives divided by all actual positives
+  recall <- t[2,2] / (t[2,2] + t[2,1])
+  recall
+```
+
+9. Balancing target variable.
+```{R}
+  original_levels <- lapply(adult_train, levels)
+  set.seed(1234) 
+  majority_class <- adult_train[adult_train$target == "<=50K",]
+  minority_class <- adult_train[adult_train$target == ">50K",]
+  downsampled_majority <- majority_class[sample(1:nrow(majority_class), nrow(minority_class)),]
+  adult_downsampled <- rbind(downsampled_majority, minority_class)
+  for (col in names(adult_downsampled)) {
+    if (is.factor(adult_downsampled[[col]])) {
+      levels(adult_downsampled[[col]]) <- original_levels[[col]] 
+    }
+  }
+  table(adult_downsampled$target)
+  
+  # train on downsampled data
+  # getting issues where downsampled data is missing factor values present in the training data, ie workclass
+  # training data has 'Never-worked' values while downsampled data does not.
+  logistic_downsampled <- glm(as.factor(target)~age+workclass+education+`marital-status`+occupation+relationship+race+sex+`capital-gain`+`capital-loss`+`hours-per-week`+`native-country`, family = "binomial", data = adult_downsampled)
+  predictions_downsampled <- predict(logistic_downsampled, adult_test, type = "response")
+  predicted_downsampled.label <- factor(ifelse(predictions_downsampled > 0.5, ">50K", "<=50K"))
+  actual.label = adult_test$target
+  tds <- table(predicted_downsampled.label, actual.label)
+  tds
+  error_ds <- (tds[1,2]+tds[2,1]) / sum(tds)
+  error_ds
+```
+
+10. Repeat the steps above(7-9) but use C5.0(trials = 30).
+  - Error rates:
+    - C5: 12.99%
+    - LogRegr: 14.76%
+  - Precision:
+    - C5: 78.29%
+    - LogRegr: 58.93%
+  - Recall:
+    - C5: 63.71%
+    - LogRegr: 74.46%
+```{R}
+  income_c5 <- C5.0(adult_train[-14], as.factor(adult_train$target), trials = 30)
+  income_pred <- predict(income_c5, adult_test)
+  income_confusion_matrix <- CrossTable(adult_test$target, income_pred, prop.chisq = FALSE, prop.c = FALSE, prop.r = FALSE, dnn = c('actual income', 'predicted income'))
+  c5_t <- income_confusion_matrix$t
+  c5_error <- (c5_t[1,2] + c5_t[2,1]) / sum(c5_t)
+  c5_precision <- c5_t[2,2] / (c5_t[2,2] + c5_t[1,2])
+  c5_recall <- c5_t[2,2] / (c5_t[2,2] + c5_t[2,1])
+  c5_error
+  c5_precision
+  c5_recall
 ```
